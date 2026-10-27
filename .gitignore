@@ -1,0 +1,11 @@
+# Firebase CLI
+.firebase/
+firebase-debug.log
+*.log
+# Variables de entorno y claves (nunca se suben)
+.env
+.env.*
+# Sistema
+.DS_Store
+Thumbs.db
+node_modules/

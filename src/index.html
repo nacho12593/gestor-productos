@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FireApp - Firebase Auth</title>
+
+    <!-- Bootstrap 5 (CSS) desde CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-sRIl4kxILFvY47J16cr9ZwB07vP4J8+LH7qKQnuqkuIAvNWLzeN8tE5YBujZqJLB" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Punto de entrada de la app. type="module" permite usar import/export -->
+    <script src="main.js" type="module"></script>
+</head>
+<body>
+
+    <!-- ===================== NAVBAR ===================== -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary" data-bs-theme="dark">
+        <div class="container">
+            <a class="navbar-brand" href="#">FireApp</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <!-- Visibles solo cuando NO hay sesión (clase logged-out) -->
+                    <li class="nav-item logged-out">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#signin-modal">Sign In</a>
+                    </li>
+                    <li class="nav-item logged-out">
+                        <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#signup-modal">Sign Up</a>
+                    </li>
+                    <!-- Visible solo cuando SÍ hay sesión (clase logged-in) -->
+                    <li class="nav-item logged-in">
+                        <a class="nav-link" href="#" id="logout">Logout</a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ===================== CONTENIDO ===================== -->
+    <main class="container py-5">
+        <div class="logged-out text-center">
+            <h1>Bienvenido a FireApp</h1>
+            <p class="lead">Inicia sesión o regístrate para continuar.</p>
+        </div>
+        <!-- Módulo de productos: solo visible con sesión iniciada -->
+        <section class="logged-in">
+            <div class="mb-4">
+                <h1 class="h3 mb-1">Mis productos</h1>
+                <p class="text-secondary mb-0">Hola, <strong id="user-email" class="text-light"></strong> · Proveedor: <span id="user-provider"></span></p>
+            </div>
+
+            <div class="row g-4">
+                <!-- Formulario de registro / edición -->
+                <div class="col-lg-4">
+                    <div class="card bg-dark text-light border-secondary">
+                        <div class="card-body">
+                            <h2 class="h5" id="product-form-title">Nuevo producto</h2>
+                            <form id="product-form" novalidate>
+                                <label for="product-name" class="form-label">Nombre:</label>
+                                <input type="text" id="product-name" class="form-control mb-2" maxlength="80" required>
+
+                                <label for="product-description" class="form-label">Descripción:</label>
+                                <textarea id="product-description" class="form-control mb-2" rows="3" maxlength="500" required></textarea>
+
+                                <div class="row g-2">
+                                    <div class="col-6">
+                                        <label for="product-price" class="form-label">Precio (MXN):</label>
+                                        <input type="number" id="product-price" class="form-control mb-2" min="0" step="0.01" required>
+                                    </div>
+                                    <div class="col-6">
+                                        <label for="product-stock" class="form-label">Existencias:</label>
+                                        <input type="number" id="product-stock" class="form-control mb-2" min="0" step="1" required>
+                                    </div>
+                                </div>
+
+                                <label for="product-category" class="form-label">Categoría:</label>
+                                <select id="product-category" class="form-select mb-2" required>
+                                    <option value="">Elige una categoría</option>
+                                    <option>Electrónica</option>
+                                    <option>Accesorios</option>
+                                    <option>Ropa</option>
+                                    <option>Hogar</option>
+                                    <option>Alimentos</option>
+                                    <option>Papelería</option>
+                                    <option>Otros</option>
+                                </select>
+
+                                <label for="product-images" class="form-label" id="product-images-label">Imágenes (mínimo 1, máximo 5):</label>
+                                <input type="file" id="product-images" class="form-control mb-1" accept="image/*" multiple>
+                                <div class="form-text text-secondary mb-2">Se redimensionan a 800 px y se comprimen antes de guardar.</div>
+
+                                <!-- Vista previa -->
+                                <div id="image-hint" class="small text-secondary"></div>
+                                <div id="image-preview" class="d-flex flex-wrap gap-2 my-2"></div>
+
+                                <div class="d-flex gap-2">
+                                    <button type="submit" id="product-submit" class="btn btn-primary flex-grow-1">Guardar producto</button>
+                                    <button type="button" id="product-cancel" class="btn btn-outline-secondary d-none">Cancelar</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lista de productos del usuario -->
+                <div class="col-lg-8">
+                    <h2 class="h5">Productos registrados <span id="product-count" class="text-secondary"></span></h2>
+                    <div id="product-list" class="row g-3"></div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ===================== MODAL SIGN IN ===================== -->
+    <div class="modal fade" id="signin-modal" tabindex="-1" aria-labelledby="signin-title" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="signin-title">Sign In</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="signin-form">
+                        <label for="signin-email" class="form-label">Correo:</label>
+                        <input type="email" id="signin-email" placeholder="correo@ejemplo.com" required class="form-control mb-3">
+
+                        <label for="signin-password" class="form-label">Contraseña:</label>
+                        <input type="password" id="signin-password" placeholder="******" required class="form-control mb-3">
+
+                        <button type="submit" class="btn btn-primary w-100">Iniciar sesión</button>
+                    </form>
+
+                    <div class="text-center text-secondary my-3">o continúa con</div>
+
+                    <!-- Botones de proveedores de terceros -->
+                    <div class="d-grid gap-2">
+                        <button type="button" id="google-login" class="btn btn-light">Google</button>
+                        <button type="button" id="facebook-login" class="btn btn-primary">Facebook</button>
+                        <button type="button" id="github-login" class="btn btn-secondary">GitHub</button>
+                        <button type="button" id="yahoo-login" class="btn text-white" style="background-color:#6001d2;">Yahoo</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== MODAL SIGN UP ===================== -->
+    <div class="modal fade" id="signup-modal" tabindex="-1" aria-labelledby="signup-title" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light">
+                <div class="modal-header">
+                    <h1 class="modal-title fs-5" id="signup-title">Sign Up</h1>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="signup-form">
+                        <label for="signup-email" class="form-label">Correo:</label>
+                        <input type="email" id="signup-email" placeholder="correo@ejemplo.com" required class="form-control mb-3">
+
+                        <label for="signup-password" class="form-label">Contraseña (mínimo 6 caracteres):</label>
+                        <input type="password" id="signup-password" placeholder="******" required class="form-control mb-3">
+
+                        <button type="submit" class="btn btn-primary w-100">Registrarse</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===================== TOAST (mensajes al usuario) ===================== -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <div id="app-toast" class="toast align-items-center border-0" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="app-toast-body"></div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Cerrar"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap 5 (JS). Expone el objeto global "bootstrap" que usamos para controlar modales y toasts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js" integrity="sha384-FKyoEForCGlyvwx9Hj09JcYn3nv7wiPVlz7YYwJrWVcXK/BmnVDxM+D2scQbITxI" crossorigin="anonymous"></script>
+</body>
+</html>
